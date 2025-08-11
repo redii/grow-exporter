@@ -86,10 +86,6 @@ app.post("/push", (req: Request, res: Response) => {
     illuminanceGauge.set(illuminance);
   }
 
-  temperatureGauge.set(temperature);
-  humidityGauge.set(humidity);
-  moistureGauge.set(moisture);
-  illuminanceGauge.set(illuminance);
   lastUpdateGauge.set(Date.now() / 1000); // timestamp in seconds
 
   console.info(new Date(), "values saved");
