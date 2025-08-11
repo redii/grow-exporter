@@ -24,7 +24,7 @@ const moistureGauge = new Gauge({
   help: "Soil Moisture in Percent",
 });
 const illuminanceGauge = new Gauge({
-  name: "grow_illuminance_percent",
+  name: "grow_illuminance_lux",
   help: "Illuminance in Lux",
 });
 const lastUpdateGauge = new Gauge({
