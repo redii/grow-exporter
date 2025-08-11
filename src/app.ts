@@ -1,12 +1,11 @@
 import express, { Request, Response } from "express";
-import { Gauge, Registry, collectDefaultMetrics } from "prom-client";
+import { Gauge, Registry } from "prom-client";
 
 const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.API_KEY;
 
 const register = new Registry();
-collectDefaultMetrics({ register });
 
 // Middleware
 app.use(express.json());
