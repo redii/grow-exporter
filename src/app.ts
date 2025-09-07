@@ -5,38 +5,51 @@ const app = express();
 const port = process.env.PORT || 3000;
 const apiKey = process.env.API_KEY;
 
-const register = new Registry();
-
 // Middleware
 app.use(express.json());
 
 // Define metrics
-const temperatureGauge = new Gauge({
-  name: 'grow_temperature_celsius',
-  help: 'Temperature in Celsius',
-});
-const humidityGauge = new Gauge({
-  name: 'grow_humidity_percent',
-  help: 'Humidity in Percent',
-});
-const moistureGauge = new Gauge({
-  name: 'grow_moisture_percent',
-  help: 'Soil Moisture in Percent',
-});
-const illuminanceGauge = new Gauge({
-  name: 'grow_illuminance_lux',
-  help: 'Illuminance in Lux',
-});
+const metrics = [
+  {
+    key: 'temperature',
+    name: 'grow_temperature_celsius',
+    gauge: new Gauge({
+      name: 'grow_temperature_celsius',
+      help: 'Temperature in Celsius',
+    }),
+  },
+  {
+    key: 'humidity',
+    name: 'grow_humidity_percent',
+    gauge: new Gauge({
+      name: 'grow_humidity_percent',
+      help: 'Humidity in Percent',
+    }),
+  },
+  {
+    key: 'moisture',
+    name: 'grow_moisture_percent',
+    gauge: new Gauge({
+      name: 'grow_moisture_percent',
+      help: 'Soil Moisture in Percent',
+    }),
+  },
+  {
+    key: 'illuminance',
+    name: 'grow_illuminance_lux',
+    gauge: new Gauge({
+      name: 'grow_illuminance_lux',
+      help: 'Illuminance in Lux',
+    }),
+  },
+];
+
+// Register metrics
+const register = new Registry();
 const lastUpdateGauge = new Gauge({
   name: 'grow_last_update_timestamp',
   help: 'Last timestamp data was received',
 });
-
-// Register metrics
-register.registerMetric(temperatureGauge);
-register.registerMetric(humidityGauge);
-register.registerMetric(moistureGauge);
-register.registerMetric(illuminanceGauge);
 register.registerMetric(lastUpdateGauge);
 
 // POST endpoint to receive data
@@ -49,45 +62,17 @@ app.post('/push', (req: Request, res: Response) => {
       });
     }
 
-    const { temperature, humidity, moisture, illuminance } = req.body;
-
-    if (temperature) {
-      if (typeof temperature !== 'number')
-        return res.status(400).json({
-          success: false,
-          status: 'Temperature must be a number (celsius)',
-        });
-      temperatureGauge.set(temperature);
-    }
-
-    if (humidity) {
-      if (typeof humidity !== 'number')
-        return res.status(400).json({
-          success: false,
-          status: 'Humidity must be a number (percent)',
-        });
-      humidityGauge.set(humidity);
-    }
-
-    if (moisture) {
-      if (typeof moisture !== 'number')
-        return res.status(400).json({
-          success: false,
-          status: 'Moisture must be a number (percent)',
-        });
-      moistureGauge.set(moisture);
-    }
-
-    if (illuminance) {
-      if (typeof illuminance !== 'number')
-        return res.status(400).json({
-          success: false,
-          status: 'Illuminance must be a number (lux)',
-        });
-      illuminanceGauge.set(illuminance);
-    }
-
     lastUpdateGauge.set(Date.now() / 1000); // timestamp in seconds
+
+    for (const metric of metrics) {
+      const value = req.body[metric.key];
+      if (value === undefined) {
+        register.removeSingleMetric(metric.name);
+      } else {
+        register.registerMetric(metric.gauge);
+        metric.gauge.set(value);
+      }
+    }
 
     console.info(new Date(), 'values saved');
     return res.json({ success: true, status: 'Values have been saved' });
@@ -99,8 +84,8 @@ app.post('/push', (req: Request, res: Response) => {
 // Prometheus metrics endpoint
 app.get('/metrics', async (_req: Request, res: Response) => {
   try {
-    res.set('Content-Type', register.contentType);
     console.info(new Date(), 'metrics exported');
+    res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
   } catch (err) {
     console.error(new Date(), '/metrics\n', err);
